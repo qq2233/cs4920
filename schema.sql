@@ -1,26 +1,32 @@
+--This is a library of UEs imported by the user
+--It can include EPWING dictionaries, Anki Decks,
+--Sentence corpuses, etc.
 CREATE TABLE Libraries (
 	id INTEGER NOT NULL,
-	name TEXT,
+	name TEXT NOT NULL UNIQUE,
 	PRIMARY KEY (id)
 );
 
+--Represents a 'word' which is contained in a Library.
+--If imported from a Dictionary-type library (rather than a
+--list of sentences), there may be meanings attached to it.
 CREATE TABLE Entries (
 	id INTEGER NOT NULL,
 	library INTEGER NOT NULL, --Every entry must have a source
-	word TEXT,	--the actual word, eg. teacher
+	word TEXT NOT NULL,	--the actual word, eg. teacher
 	PRIMARY KEY (id),
 	FOREIGN KEY (library) REFERENCES Libraries(id)
 );
 
+--One of the dictionary meanings of a single word (entry).
+--Corresponds to an entry that comes from a Library
 CREATE TABLE Meanings (
 	id INTEGER NOT NULL,
-	entry INTEGER,
 	kana TEXT, --phonetic reading
 	kanji TEXT,
-	morpheneType TEXT, --eg noun, verb, particle
+	morphemeType TEXT, --eg noun, verb, particle
 	definition TEXT,
-	PRIMARY KEY (id),
-	FOREIGN KEY (entry) REFERENCES Entries(id)
+	PRIMARY KEY (id)
 );
 
 --Relationship between entries and meaning
@@ -34,21 +40,21 @@ CREATE TABLE EntriesHasAMeaning (
 );
 
 --A usage example is either a sentence or phrase
---set phrase NULL if it's a sentence, and vice versa
+--set isSentence 1 if it's a sentence, 0 if phrase
 CREATE TABLE UsageExamples (
 	id INTEGER NOT NULL,
 	expression TEXT,
 	meaning TEXT,
 	reading TEXT,
-	sentence TEXT,
-	phrase TEXT,
+	isSentence INTEGER NOT NULL,
 	PRIMARY KEY (id)
 );
 
 --A usage example can have many sources, avoiding duplication
 --by having this table.
 --This is the 'part of' relationship between library and usageExample
-CREATE TABLE UsageExampleSource (
+--UsageExample must be part of Library not strictly enforced
+CREATE TABLE UESource (
 	usageExample INTEGER NOT NULL,
 	library INTEGER NOT NULL,
 	PRIMARY KEY (usageExample, library),
@@ -57,28 +63,31 @@ CREATE TABLE UsageExampleSource (
 );
 
 --Relationship between usageExample and Entries
-CREATE TABLE UsageConsistsOf (
+--Usage Examples must consist of Entries not strictly enforced
+CREATE TABLE UEConsistsOf (
 	usageExample INTEGER NOT NULL,
-	entry INTEGER,
-	position INTEGER,
-	wordLength INTEGER,
-	PRIMARY KEY (usageExample),
+	entry INTEGER NOT NULL,
+	position INTEGER NOT NULL,
+	wordLength INTEGER NOT NULL,
+	PRIMARY KEY (usageExample, entry),
 	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
 	FOREIGN KEY (entry) REFERENCES Entries(id)
 );
 	
+--User and System created lists of UEs
 CREATE TABLE Lists (
 	id INTEGER NOT NULL,
 	name TEXT, 
-	listType TEXT,
+	listType TEXT, --might change this in the future
 	PRIMARY KEY (id)
 );
 
 --relationship between usageExample and List
-CREATE TABLE UsageApartOfList (
-	id INTEGER NOT NULL,
+CREATE TABLE UEPartOfList (
+	list INTEGER NOT NULL,
+	usageExample INTEGER NOT NULL,
 	toLearn TEXT,
-	list INTEGER,
-	usageExample INTEGER,
-	PRIMARY KEY (id)
+	PRIMARY KEY (list, usageExample),
+	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
+	FOREIGN KEY (list) REFERENCES Lists(id)
 );
