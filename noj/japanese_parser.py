@@ -55,6 +55,9 @@ class JapaneseParser(object):
         position = 0
         while node:
             details = re.split(',', node.feature)
+            for d in range(0,len(details)):
+                if details[d] == '*':
+                    details[d] = ''
             type = morphemeTypes[details[0]]
             if type not in self.skipTypes:
                 results.addMorpheme (
@@ -82,6 +85,7 @@ class JapaneseParseResults(object):
         super(JapaneseParseResults, self).__init__()
         self.morphemes = list()
         self.skipTypesComponents = frozenset([BOS_EOS, SYMBOL])
+        self._components = None
 
     def addMorpheme(self, morpheme, base=None, reading=None, 
             length=None, position=None, type=None):
@@ -96,6 +100,7 @@ class JapaneseParseResults(object):
         }
         self.morphemes.append(m)
 
+    # Don't use this function yet, will modify when we get to using it
     def ankiReading(self):
         """return string compatible with anki for furigana reading
         See: https://github.com/dae/ankiplugins
@@ -105,7 +110,7 @@ class JapaneseParseResults(object):
             # hiragana, punctuation, not japanese, or lacking a reading
             morpheme = m['morpheme']
             reading = m['reading']
-            if morpheme == reading or not reading or reading == '*':
+            if morpheme == reading or not reading or reading == '':
                 out.append(morpheme)
                 continue
             # katakana
@@ -150,29 +155,45 @@ class JapaneseParseResults(object):
                         rd[-placeR:])).encode('utf-8'))
         return ''.join(out).strip()
 
+    @property
     def components(self):
         """return dict of morphemes which were part of the 
         original expression. Used for populating the database.
-        Ignores characters which are too common and punctuation"""
-        components = list()
-        for m in self.morphemes:
-            if m['type'] not in self.skipTypesComponents:
-                components.append(m)
-        return components
+        Ignores characters which are too common and punctuation
+        Uses lazy instantiation"""
+        if self._components == None:
+            self._components = list()
+            for m in self.morphemes:
+                if m['type'] not in self.skipTypesComponents:
+                    self._components.append(m)
+        return self._components
 
-def componentsPrettyPrint(l):
-    """Print out results of parsing that contains utf-8 properly"""
+def listDictString(l):
+    """Used for pretty printing japanese parse result components
+    as directly printing out the data structure will not display
+    utf-8 correctly"""
+    out = list()
     for item in l:
+        group = ['{']
         for key, value in item.items():
-            print("{}:{}, ".format(key, value), end='')
-        print()
+            valuePrint = value
+            if not isinstance(value, int):
+                valuePrint = "'{}'".format(value)
+            group.append("'{}':{}, ".format(key, valuePrint))
+        group.append('},')
+        out.append(''.join(group))
+    return '\n'.join(out)
+
         
 if __name__ == "__main__":
     parser = JapaneseParser()
-    #results = parser.parse("明日は晴れるかな")
+    results = parser.parse("明日は晴れるかな")
     #results = parser.parse("自動 生成されています.")
     #results = parser.parse("自動 生成されています.")
     #results = parser.parse("今日もしないとね。")
-    results = parser.parse('明日は今日よりやや暖かいでしょう.')
-    componentsPrettyPrint(results.components())
+    #results = parser.parse('明日は今日よりやや暖かいでしょう.')
+    #results = parser.parse('プログラムは一部2,000 円だ.')
+    #results = parser.parse('データは以下のとおりです。')
+    #results = parser.parse('This is english')
+    print(listDictString(results.components))
     print("reading:{}".format(results.ankiReading()))
