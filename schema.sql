@@ -23,11 +23,20 @@ CREATE TABLE Entries (
 CREATE TABLE Meanings (
 	id INTEGER NOT NULL,
 	kana TEXT, --phonetic reading
-	kanji TEXT,
 	morphemeType TEXT, --eg noun, verb, particle
 	definition TEXT,
 	PRIMARY KEY (id)
 );
+
+
+-- An entry can have many different kanji
+CREATE TABLE HasKanji (
+	id INTEGER NOT NULL,
+	entry INTEGER NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY (entry) REFERENCES Entries(id)
+);
+
 
 --Relationship between entries and meaning
 --Entries may have many (or none) meanings
@@ -47,20 +56,22 @@ CREATE TABLE UsageExamples (
 	meaning TEXT,
 	reading TEXT,
 	isSentence INTEGER NOT NULL,
-	PRIMARY KEY (id)
+	meaning INTEGER, --A UE can only have ONE corresponding meaning
+	PRIMARY KEY (id),
+	FOREIGN KEY (meaning) REFERENCES Meanings(id)
 );
 
 --A usage example can have many sources, avoiding duplication
 --by having this table.
---This is the 'part of' relationship between library and usageExample
+--This is the 'part of' relationship between and usageExample
 --UsageExample must be part of Library not strictly enforced
-CREATE TABLE UESource (
-	usageExample INTEGER NOT NULL,
-	library INTEGER NOT NULL,
-	PRIMARY KEY (usageExample, library),
-	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id), 
-	FOREIGN KEY (library) REFERENCES Libraries(id)
-);
+--CREATE TABLE UESource (
+--	usageExample INTEGER NOT NULL,
+--	library INTEGER NOT NULL,
+--	PRIMARY KEY (usageExample, library),
+--	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id), 
+--	FOREIGN KEY (library) REFERENCES Libraries(id)
+--);
 
 --Relationship between usageExample and Entries
 --Usage Examples must consist of Entries not strictly enforced
