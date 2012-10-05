@@ -7,45 +7,10 @@ CREATE TABLE Libraries (
 	PRIMARY KEY (id)
 );
 
---Represents a 'word' which is contained in a Library.
---If imported from a Dictionary-type library (rather than a
---list of sentences), there may be meanings attached to it.
 CREATE TABLE Entries (
 	id INTEGER NOT NULL,
-	library INTEGER NOT NULL, --Every entry must have a source
-	word TEXT NOT NULL,	--the actual word, eg. teacher
-	PRIMARY KEY (id),
-	FOREIGN KEY (library) REFERENCES Libraries(id)
-);
-
---One of the dictionary meanings of a single word (entry).
---Corresponds to an entry that comes from a Library
-CREATE TABLE Meanings (
-	id INTEGER NOT NULL,
-	kana TEXT, --phonetic reading
-	morphemeType TEXT, --eg noun, verb, particle
-	definition TEXT,
+	word TEXT,
 	PRIMARY KEY (id)
-);
-
-
--- An entry can have many different kanji
-CREATE TABLE HasKanji (
-	id INTEGER NOT NULL,
-	entry INTEGER NOT NULL,
-	PRIMARY KEY (id),
-	FOREIGN KEY (entry) REFERENCES Entries(id)
-);
-
-
---Relationship between entries and meaning
---Entries may have many (or none) meanings
-CREATE TABLE EntriesHasAMeaning (
-	entry INTEGER,
-	meaning INTEGER,
-	PRIMARY KEY (entry, meaning),
-	FOREIGN KEY (entry) REFERENCES Entries(id),
-	FOREIGN KEY (meaning) REFERENCES Meanings(id)
 );
 
 --A usage example is either a sentence or phrase
@@ -53,38 +18,61 @@ CREATE TABLE EntriesHasAMeaning (
 CREATE TABLE UsageExamples (
 	id INTEGER NOT NULL,
 	expression TEXT,
-	meaning TEXT,
 	reading TEXT,
 	isSentence INTEGER NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE UEHasMeanings (
+	id INTEGER NOT NULL,
+	usageExample INTEGER,
+	entry INTEGER, --The corresponding entry
 	meaning INTEGER, --A UE can only have ONE corresponding meaning
+					 --or the value can be null
 	PRIMARY KEY (id),
-	FOREIGN KEY (meaning) REFERENCES Meanings(id)
+	FOREIGN KEY entry REFERENCES Entries(id),
+	FOREIGN KEY usageExample REFERENCES usageExamples(id)
 );
 
---A usage example can have many sources, avoiding duplication
---by having this table.
---This is the 'part of' relationship between and usageExample
---UsageExample must be part of Library not strictly enforced
---CREATE TABLE UESource (
---	usageExample INTEGER NOT NULL,
---	library INTEGER NOT NULL,
---	PRIMARY KEY (usageExample, library),
---	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id), 
---	FOREIGN KEY (library) REFERENCES Libraries(id)
---);
+--Fill with all possible types of morphemes
+--eg 1 = noun
+--   2 = verb
+--   3 = particle
+CREATE TABLE MorphemeTypes (
+	id INTEGER NOT NULL,
+	types TEXT NOT NULL UNIQUE,
+	PRIMARY KEY (id)
+);
 
---Relationship between usageExample and Entries
---Usage Examples must consist of Entries not strictly enforced
+CREATE TABLE Morpheme (
+	id INTEGER NOT NULL,
+	morpheme TEXT,
+	morphemeType INTEGER,
+	PRIMARY KEY (id),
+	FOREIGN KEY morphemeType REFERENCES morphemeTypes(id)
+);
+
+CREATE TABLE EntryHasMorphemes (
+	id INTEGER NOT NULL,
+	kana TEXT,
+	kanji TEXT,
+	entry INTEGER,
+	morpheme INTEGER,
+	PRIMARY KEY (id),
+	FOREIGN KEY entry REFERENCES Entries(id)
+	FOREIGN KEY morpheme REFERENCES Morphemes(id)
+);
+
 CREATE TABLE UEConsistsOf (
+	id INTEGER NOT NULL,
 	usageExample INTEGER NOT NULL,
-	entry INTEGER NOT NULL,
-	position INTEGER NOT NULL,
-	wordLength INTEGER NOT NULL,
-	PRIMARY KEY (usageExample, entry),
-	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
-	FOREIGN KEY (entry) REFERENCES Entries(id)
+	wordLength INTEGER,
+	position INTEGER,
+	PRIMARY KEY (id)
+	FOREIGN KEY usageExample REFERENCES UsageExamples(id)
 );
-	
+
+
 --User and System created lists of UEs
 CREATE TABLE Lists (
 	id INTEGER NOT NULL,
