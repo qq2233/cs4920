@@ -59,7 +59,7 @@ CREATE TABLE EntryHasMorphemes (
 	entry INTEGER,
 	morpheme INTEGER,
 	PRIMARY KEY (id),
-	FOREIGN KEY entry REFERENCES Entries(id)
+	FOREIGN KEY entry REFERENCES Entries(id),
 	FOREIGN KEY morpheme REFERENCES Morphemes(id)
 );
 
@@ -68,7 +68,7 @@ CREATE TABLE UEConsistsOf (
 	usageExample INTEGER NOT NULL,
 	wordLength INTEGER,
 	position INTEGER,
-	PRIMARY KEY (id)
+	PRIMARY KEY (id),
 	FOREIGN KEY usageExample REFERENCES UsageExamples(id)
 );
 
