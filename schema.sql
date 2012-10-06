@@ -30,8 +30,8 @@ CREATE TABLE UEHasMeanings (
 	meaning INTEGER, --A UE can only have ONE corresponding meaning
 					 --or the value can be null
 	PRIMARY KEY (id),
-	FOREIGN KEY entry REFERENCES Entries(id),
-	FOREIGN KEY usageExample REFERENCES usageExamples(id)
+	FOREIGN KEY (entry) REFERENCES Entries(id),
+	FOREIGN KEY (usageExample) REFERENCES usageExamples(id)
 );
 
 --Fill with all possible types of morphemes
@@ -49,7 +49,7 @@ CREATE TABLE Morpheme (
 	morpheme TEXT,
 	morphemeType INTEGER,
 	PRIMARY KEY (id),
-	FOREIGN KEY morphemeType REFERENCES morphemeTypes(id)
+	FOREIGN KEY (morphemeType) REFERENCES morphemeTypes(id)
 );
 
 CREATE TABLE EntryHasMorphemes (
@@ -59,8 +59,8 @@ CREATE TABLE EntryHasMorphemes (
 	entry INTEGER,
 	morpheme INTEGER,
 	PRIMARY KEY (id),
-	FOREIGN KEY entry REFERENCES Entries(id),
-	FOREIGN KEY morpheme REFERENCES Morphemes(id)
+	FOREIGN KEY (entry) REFERENCES Entries(id),
+	FOREIGN KEY (morpheme) REFERENCES Morphemes(id)
 );
 
 CREATE TABLE UEConsistsOf (
@@ -69,7 +69,7 @@ CREATE TABLE UEConsistsOf (
 	wordLength INTEGER,
 	position INTEGER,
 	PRIMARY KEY (id),
-	FOREIGN KEY usageExample REFERENCES UsageExamples(id)
+	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id)
 );
 
 
