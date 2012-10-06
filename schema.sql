@@ -20,10 +20,8 @@ CREATE TABLE Entries (
     library INTEGER NOT NULL,
     number INTEGER,
     kana INTEGER NOT NULL,
-    meaning INTEGER NOT NULL,
 	PRIMARY KEY (id),
 	FOREIGN KEY (library) REFERENCES Libraries(id),
-	FOREIGN KEY (meaning) REFERENCES Meanings(id),
 	FOREIGN KEY (kana) REFERENCES Morphemes(id)
 );
 
@@ -41,6 +39,14 @@ CREATE TABLE Meanings (
 	entry INTEGER NOT NULL,
 	PRIMARY KEY (id),
 	FOREIGN KEY (entry) REFERENCES Entries(id)
+);
+
+CREATE TABLE EntryHasMeanings (
+	entry INTEGER NOT NULL,
+	meaning INTEGER NOT NULL,
+	PRIMARY KEY (entry, meaning),
+	FOREIGN KEY (entry) REFERENCES Entries(id),
+	FOREIGN KEY (meaning) REFERENCES Meanings(id)
 );
 
 --A usage example is either a sentence or phrase
