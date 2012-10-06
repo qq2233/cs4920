@@ -73,6 +73,7 @@ CREATE TABLE Morphemes (
 	id INTEGER NOT NULL,
 	morpheme TEXT,
 	morphemeType INTEGER, --might make not null in future
+    count INTEGER,
 	PRIMARY KEY (id),
 	FOREIGN KEY (morphemeType) REFERENCES morphemeTypes(id)
 );
