@@ -41,14 +41,6 @@ CREATE TABLE Meanings (
 	FOREIGN KEY (entry) REFERENCES Entries(id)
 );
 
-CREATE TABLE EntryHasMeanings (
-	entry INTEGER NOT NULL,
-	meaning INTEGER NOT NULL,
-	PRIMARY KEY (entry, meaning),
-	FOREIGN KEY (entry) REFERENCES Entries(id),
-	FOREIGN KEY (meaning) REFERENCES Meanings(id)
-);
-
 --A usage example is either a sentence or phrase
 --set isSentence 1 if it's a sentence, 0 if phrase
 CREATE TABLE UsageExamples (
@@ -77,20 +69,20 @@ CREATE TABLE MorphemeTypes (
 
 CREATE TABLE Morphemes (
 	id INTEGER NOT NULL,
-	morpheme TEXT,
+	morpheme TEXT NOT NULL,
 	morphemeType INTEGER, --might make not null in future
-    count INTEGER,
+    count INTEGER, --num occurrances in known list (anki deck)
+    UNIQUE (morpheme, morphemeType),
 	PRIMARY KEY (id),
 	FOREIGN KEY (morphemeType) REFERENCES morphemeTypes(id)
 );
 
 CREATE TABLE UEConsistsOf (
-	id INTEGER NOT NULL,
 	usageExample INTEGER NOT NULL,
 	morpheme INTEGER NOT NULL,
-	wordLength INTEGER,
+	wordLength INTEGER, --maybe make this & pos not null
 	position INTEGER,
-	PRIMARY KEY (id),
+	PRIMARY KEY (usageExample, morpheme),
 	FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
 	FOREIGN KEY (morpheme) REFERENCES Morphemes(id)
 );
@@ -98,7 +90,7 @@ CREATE TABLE UEConsistsOf (
 --User and System created lists of UEs
 CREATE TABLE Lists (
 	id INTEGER NOT NULL,
-	name TEXT, 
+	name TEXT NOT NULL, 
 	listType INTEGER NOT NULL, --might change this in the future
 	PRIMARY KEY (id),
 	FOREIGN KEY (listType) REFERENCES ListTypes(id)
