@@ -3,6 +3,9 @@
 
 import re
 import codecs
+from japanese_parser import *
+import sqlite3
+conn = sqlite3.connect('sentence_library.db')
 
 re_header_line = re.compile(r'(\w+?): ?(.*)$')
 re_entry = re.compile(r'^[^\t]')
@@ -77,6 +80,14 @@ class UsageExample(object):
         self.expression = expression
         self.meaning = meaning
         self.type_ = type_
+        self.components = None
+
+    def get_components(self, parser):
+        """docstring for get_components"""
+        if self.components is None:
+            expression_utf8 = self.expression.encode('utf-8')
+            self.components = parser.parse(expression_utf8).components
+        return self.components
 
     def __str__(self):
         return ("{}\n{}".format(self.expression.encode('utf-8'),
@@ -148,16 +159,25 @@ class UELibraryImporter(object):
                 ue = UsageExample(m.group(1), m.group(2))
                 meaning.add_usage_example(ue)
                 #print ue
-        print entry
         return entry
+
+    def entries(self):
+        entry = self.read_entry()
+        while entry is not None:
+            yield entry
+            entry = self.read_entry()
 
 def main():
     importer = UELibraryImporter('out2')
     lib_type = importer.type_
-    entry = True
-    while entry is not None:
-        entry = importer.read_entry()
-    #importer.read_entry()
+    #entry = True
+    #for entry in importer.entries():
+        #print entry
+    entry = importer.read_entry()
+    print entry
+    ue = entry.meanings[2].usage_examples[0]
+    parser = JapaneseParser()
+    print listDictString(ue.get_components(parser))
     #importer.read_entry()
     #if lib_type == DICTIONARY:
         #while importer.not_end_of_file():

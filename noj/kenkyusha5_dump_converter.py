@@ -10,7 +10,7 @@ re_entry_split2 = re.compile(ur'^(.*?)([１２３４５６７８９０]*)$')
 re_entry_split3 = re.compile(ur'【(.*?)】')
 re_entry_word_sep = re.compile(ur'・')
 re_ue = re.compile(ur'^[▲・◧◨]?(.*)　(.*)$')
-re_numbered_meaning = re.compile(ur'^[0-9]+ ')
+re_numbered_meaning = re.compile(ur'^[0-9]+ (.*)$')
 re_example_sentence = re.compile(ur'[.」!?]　')
 re_example_sentence_filter1 = re.compile(ur'<LINK>')
 re_example_sentence_filter2 = re.compile(ur'^…')
@@ -100,11 +100,11 @@ for line in f:
                 number=e['number'], kanji=e['kanji']).encode('utf-8')
         #print "{}".format(line.encode('utf-8')),
     elif in_entry == True:
-        if (re_numbered_meaning.match(line) and 
-                has_multiple_meanings == True):
+        nm = re_numbered_meaning.match(line)
+        if (nm and has_multiple_meanings == True):
             in_meaning = True
             in_word_form = False
-            print "\t{}".format(line.encode('utf-8')),
+            print "\t{}".format(nm.group(1).encode('utf-8'))
         elif in_meaning == False:
             has_multiple_meanings = False
             in_meaning = True
