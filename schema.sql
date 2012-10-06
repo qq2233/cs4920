@@ -80,8 +80,8 @@ CREATE TABLE Morphemes (
 CREATE TABLE UEConsistsOf (
     usageExample INTEGER NOT NULL,
     morpheme INTEGER NOT NULL,
-    wordLength INTEGER, --maybe make this & pos not null
-    position INTEGER,
+    wordLength INTEGER NOT NULL,
+    position INTEGER NOT NULL,
     PRIMARY KEY (usageExample, morpheme),
     FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
     FOREIGN KEY (morpheme) REFERENCES Morphemes(id)
@@ -98,7 +98,7 @@ CREATE TABLE Lists (
 
 CREATE TABLE ListTypes (
     id INTEGER NOT NULL,
-    type TEXT, 
+    type TEXT NOT NULL UNIQUE, 
     PRIMARY KEY (id)
 );
 
@@ -111,3 +111,27 @@ CREATE TABLE UEPartOfList (
     FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
     FOREIGN KEY (list) REFERENCES Lists(id)
 );
+
+--preload some constant tuples
+INSERT INTO ListTypes (id, type) VALUES (1, 'USER');
+INSERT INTO ListTypes (id, type) VALUES (2, 'REVIEWING');
+INSERT INTO ListTypes (id, type) VALUES (3, 'STAGED');
+
+INSERT INTO LibraryTypes (id, type) VALUES (1, 'DICTIONARY');
+INSERT INTO LibraryTypes (id, type) VALUES (2, 'CORPUS');
+
+INSERT INTO MorphemeTypes (id, type) VALUES (1, 'INTERJECTION');
+INSERT INTO MorphemeTypes (id, type) VALUES (2, 'ADVERB');
+INSERT INTO MorphemeTypes (id, type) VALUES (3, 'PRE_NOUN_ADJECTIVAL');
+INSERT INTO MorphemeTypes (id, type) VALUES (4, 'NOUN');
+INSERT INTO MorphemeTypes (id, type) VALUES (5, 'AUXILIARY_VERB');
+INSERT INTO MorphemeTypes (id, type) VALUES (6, 'VERB');
+INSERT INTO MorphemeTypes (id, type) VALUES (7, 'PARTICLE');
+INSERT INTO MorphemeTypes (id, type) VALUES (8, 'PREFIX');
+INSERT INTO MorphemeTypes (id, type) VALUES (9, 'ADJECTIVE');
+INSERT INTO MorphemeTypes (id, type) VALUES (10, 'CONJUNCTION');
+INSERT INTO MorphemeTypes (id, type) VALUES (11, 'FILLER');
+INSERT INTO MorphemeTypes (id, type) VALUES (12, 'SYMBOL');
+INSERT INTO MorphemeTypes (id, type) VALUES (13, 'OTHER');
+INSERT INTO MorphemeTypes (id, type) VALUES (14, 'KANJI_ENTRY');
+INSERT INTO MorphemeTypes (id, type) VALUES (15, 'KANA_ENTRY');
