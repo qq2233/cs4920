@@ -24,20 +24,20 @@ SYMBOL = 12
 OTHER = 13
 
 morphemeTypes = {
-    'BOS/EOS':BOS_EOS,
-    '感動詞':INTERJECTION,
-    '副詞':ADVERB,
-    '連体詞':PRE_NOUN_ADJECTIVAL,
-    '名詞':NOUN,
-    '助動詞':AUXILIARY_VERB,
-    '動詞':VERB,
-    '助詞':PARTICLE,
-    '接頭詞':PREFIX,
-    '形容詞':ADJECTIVE,
-    '接続詞':CONJUNCTION,
-    'フィラー':FILLER,
-    '記号':SYMBOL,
-    'その他':OTHER,
+    u'BOS/EOS':BOS_EOS,
+    u'感動詞':INTERJECTION,
+    u'副詞':ADVERB,
+    u'連体詞':PRE_NOUN_ADJECTIVAL,
+    u'名詞':NOUN,
+    u'助動詞':AUXILIARY_VERB,
+    u'動詞':VERB,
+    u'助詞':PARTICLE,
+    u'接頭詞':PREFIX,
+    u'形容詞':ADJECTIVE,
+    u'接続詞':CONJUNCTION,
+    u'フィラー':FILLER,
+    u'記号':SYMBOL,
+    u'その他':OTHER,
 }
 
 class JapaneseParser(object):
@@ -50,18 +50,20 @@ class JapaneseParser(object):
     def parse(self, expression):
         """Parse a japanese expression into morphemes, returns 
         parse results"""
-        node = self.parser.parseToNode(expression)
+        expression_utf8 = expression.encode('utf-8')
+        node = self.parser.parseToNode(expression_utf8)
         results = JapaneseParseResults()
         position = 0
         while node:
-            details = re.split(',', node.feature)
+            feature = unicode(node.feature, encoding='utf-8')
+            details = re.split(',', feature)
             for d in range(0,len(details)):
                 if details[d] == '*':
                     details[d] = ''
             type = morphemeTypes[details[0]]
             if type not in self.skipTypes:
                 results.addMorpheme (
-                    morpheme=node.surface,
+                    morpheme=unicode(node.surface, encoding='utf-8'),
                     base=details[-3],
                     reading=kata2hira(details[-2]),
                     length=node.length,
@@ -178,7 +180,7 @@ def listDictString(l):
         for key, value in item.items():
             valuePrint = value
             if not isinstance(value, int):
-                valuePrint = "'{}'".format(value)
+                valuePrint = "'{}'".format(value.encode('utf-8'))
             group.append("'{}':{}, ".format(key, valuePrint))
         group.append('},')
         out.append(''.join(group))
@@ -187,13 +189,14 @@ def listDictString(l):
         
 if __name__ == "__main__":
     parser = JapaneseParser()
-    results = parser.parse("明日は晴れるかな")
-    #results = parser.parse("自動 生成されています.")
-    #results = parser.parse("自動 生成されています.")
-    #results = parser.parse("今日もしないとね。")
-    #results = parser.parse('明日は今日よりやや暖かいでしょう.')
-    #results = parser.parse('プログラムは一部2,000 円だ.')
-    #results = parser.parse('データは以下のとおりです。')
-    #results = parser.parse('This is english')
+    results = parser.parse(u"明日は晴れるかな")
+    #results = parser.parse(u"自動 生成されています.")
+    #results = parser.parse(u"自動 生成されています.")
+    #results = parser.parse(u"今日もしないとね。")
+    #results = parser.parse(u'明日は今日よりやや暖かいでしょう.')
+    #results = parser.parse(u'プログラムは一部2,000 円だ.')
+    #results = parser.parse(u'データは以下のとおりです。')
+    #results = parser.parse(u'This is english')
+    #print (results.components)
     print(listDictString(results.components))
-    print("reading:{}".format(results.ankiReading()))
+    #print("reading:{}".format(results.ankiReading()))

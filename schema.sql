@@ -48,9 +48,20 @@ CREATE TABLE UsageExamples (
     expression TEXT NOT NULL,
     meaning TEXT,
     reading TEXT,
+    --library INTEGER NOT NULL,
     isSentence INTEGER NOT NULL,
     PRIMARY KEY (id)
+    --FOREIGN KEY (library) REFERENCES Libraries(id)
 );
+
+CREATE TABLE UEPartOfLibrary (
+    usageExample INTEGER NOT NULL,
+    library INTEGER NOT NULL,
+    PRIMARY KEY (usageExample, library),
+    FOREIGN KEY (library) REFERENCES Libraries(id),
+    FOREIGN KEY (usageExample) REFERENCES UsageExamples(id)
+);
+
 
 CREATE TABLE MeaningHasUEs (
     usageExample INTEGER NOT NULL,
@@ -82,7 +93,7 @@ CREATE TABLE UEConsistsOf (
     morpheme INTEGER NOT NULL,
     wordLength INTEGER NOT NULL,
     position INTEGER NOT NULL,
-    PRIMARY KEY (usageExample, morpheme),
+    PRIMARY KEY (usageExample, morpheme, position),
     FOREIGN KEY (usageExample) REFERENCES UsageExamples(id),
     FOREIGN KEY (morpheme) REFERENCES Morphemes(id)
 );

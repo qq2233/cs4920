@@ -4,8 +4,9 @@
 import re
 import codecs
 from japanese_parser import *
-import sqlite3
-conn = sqlite3.connect('sentence_library.db')
+from data_structures import *
+from db_interface import *
+import sqlite3 as lite
 
 re_header_line = re.compile(r'(\w+?): ?(.*)$')
 re_entry = re.compile(r'^[^\t]')
@@ -15,83 +16,6 @@ re_meaning_split = re.compile(r'^\t([^\t]*)\n')
 re_ue = re.compile(r'^\t\t[^\t]')
 re_ue_split = re.compile(r'^\t\t([^\t]*)\t([^\t]*)\n')
 
-SENTENCE = 0
-PHRASE = 1
-CORPUS = 0
-DICTIONARY = 1
-FORMAT_TABS = 0
-
-class DictionaryEntry(object):
-    """docstring for DictionaryEntry"""
-    def __init__(self, kana, kanji, entry_number):
-        super(DictionaryEntry, self).__init__()
-        self.kana = kana
-        self.kanji = kanji # is a list
-        self.entry_number = entry_number
-        self.meanings = list()
-
-    def add_meaning(self, meaning):
-        """docstring for add_meaning"""
-        self.meanings.append(meaning)
-
-    def num_meanings(self):
-        """docstring for num_meanings"""
-        return len(self.meanings)
-
-    def __str__(self):
-        meaning_str_list = list()
-        for m in self.meanings:
-            meaning_str_list.extend(str(m).split('\n'))
-        meaning_str = '\n'.join(["\t{}".format(m) 
-                                 for m in meaning_str_list])
-        kanji_str = u'・'.join(self.kanji)
-        return ("{} {} [{}]\n{}".format(self.kana.encode('utf-8'), 
-                                    self.entry_number, 
-                                    kanji_str.encode('utf-8'),
-                                    meaning_str)) 
-
-
-class DictionaryMeaning(object):
-    """docstring for DictionaryMeaning"""
-    def __init__(self, meaning, meaning_number):
-        super(DictionaryMeaning, self).__init__()
-        self.meaning = meaning
-        self.meaning_number = meaning_number
-        self.usage_examples = list()
-
-    def add_usage_example(self, ue):
-        """docstring for add_ue"""
-        self.usage_examples.append(ue)
-
-    def __str__(self):
-        ue_str_list = list()
-        for ue in self.usage_examples:
-            ue_str_list.extend(str(ue).split('\n'))
-        ue_str = '\n'.join(["\t{}".format(ue) for ue in ue_str_list])
-        return ("{}: {}\n{}".format(self.meaning_number, 
-                                self.meaning.encode('utf-8'),
-                                ue_str))
-
-
-class UsageExample(object):
-    """docstring for UsageExample"""
-    def __init__(self, expression, meaning, type_=SENTENCE):
-        super(UsageExample, self).__init__()
-        self.expression = expression
-        self.meaning = meaning
-        self.type_ = type_
-        self.components = None
-
-    def get_components(self, parser):
-        """docstring for get_components"""
-        if self.components is None:
-            expression_utf8 = self.expression.encode('utf-8')
-            self.components = parser.parse(expression_utf8).components
-        return self.components
-
-    def __str__(self):
-        return ("{}\n{}".format(self.expression.encode('utf-8'),
-                                self.meaning.encode('utf-8')))
 
 class UELibraryImporter(object):
     """Imports usage example libraries"""
@@ -167,7 +91,97 @@ class UELibraryImporter(object):
             yield entry
             entry = self.read_entry()
 
+def import_library():
+    """docstring for import_library"""
+    importer = UELibraryImporter('out2')
+    parser = JapaneseParser()
+    lib_type = importer.type_
+    con = lite.connect('sentence_library.db')
+    cur = con.cursor() 
+    try:
+        cur.execute("INSERT INTO Libraries VALUES(null,?,?)",
+                    ('Kenkyusha 5th', 1))
+        lib_id = cur.lastrowid
+        con.commit()
+    except lite.IntegrityError as e:
+        cur.execute("select id from Libraries as L where L.name = ?",
+                ['Kenkyusha 5th'])    
+        lib_id = cur.fetchone()[0]
+    print lib_id
+    i = 0
+    for entry in importer.entries():
+        print entry
+        try:
+            cur.execute("INSERT INTO Morphemes VALUES(null,?,?,?)",
+                        (entry.kana, 15, None))
+            kana_id = cur.lastrowid
+        except lite.IntegrityError as e:
+            cur.execute("select id from Morphemes as M where M.morpheme = ? and M.morphemeType = ?",
+                    (entry.kana, 15))
+            kana_id = cur.fetchone()[0]
+        cur.execute("INSERT INTO Entries VALUES(null,?,?,?)",
+                    (lib_id, entry.entry_number, kana_id))
+        entry_id = cur.lastrowid
+        #insert kanji
+        for kanji in entry.kanji:
+            if kanji == '':
+                continue
+            try:
+                cur.execute("INSERT INTO Morphemes VALUES(null,?,?,?)",
+                            (kanji, 14, None))
+                kanji_id = cur.lastrowid
+            except lite.IntegrityError as e:
+                cur.execute("select id from Morphemes as M where M.morpheme = ? and M.morphemeType = ?",
+                        (kanji, 14))
+                kanji_id = cur.fetchone()[0]
+            cur.execute("INSERT INTO EntryHasKanji VALUES(?,?)",
+                        (entry_id, kanji_id))
+        #insert meanings
+        for meaning in entry.meanings:
+            cur.execute("INSERT INTO Meanings VALUES(null,?,?)",
+                        (meaning.meaning, entry_id))
+            meaning_id = cur.lastrowid
+            #insert UEs
+            for ue in meaning.usage_examples:
+                cur.execute("INSERT INTO UsageExamples VALUES(null,?,?,?,?)",
+                            (ue.expression, ue.meaning, None, True))
+                ue_id = cur.lastrowid
+                cur.execute("INSERT INTO MeaningHasUEs VALUES(?,?)",
+                            (ue_id, meaning_id))
+                cur.execute("INSERT INTO UEPartOfLibrary VALUES(?,?)",
+                            (ue_id, lib_id))
+                components = ue.get_components(parser)
+
+                #print listDictString(components)
+                for component in components:
+                    #print component['morpheme']
+                    #print component
+                    if component['base'] == '':
+                        continue
+                    try:
+                        cur.execute("INSERT INTO Morphemes VALUES(null,?,?,?)",
+                                    (component['base'], component['type'], None))
+                        morph_id = cur.lastrowid
+                    except lite.IntegrityError as e:
+                        cur.execute("select id from Morphemes as M where M.morpheme = ? and M.morphemeType = ?",
+                                (component['base'], component['type']))
+                        morph_id = cur.fetchone()[0]
+                    cur.execute("INSERT INTO UEConsistsOf VALUES(?,?,?,?)",
+                                (ue_id, morph_id, component['length'], component['position']))
+
+                    
+
+        con.commit()
+        #return
+        #if i == 100:
+            #return
+        print i
+        i += 1
+    con.close()
+
 def main():
+    import_library()
+    exit()
     importer = UELibraryImporter('out2')
     lib_type = importer.type_
     #entry = True
@@ -183,6 +197,29 @@ def main():
         #while importer.not_end_of_file():
             #entry = importer.read_entry()
             #db_interface.import_entry(entry)
+    #db = DatabaseInterface()
+    #db.new_library()
+    #foreach entry in entries
+        #insert into new library
+
+    #kana_entry_type_id = get id for kana entry
+    #kanji_entry_type_id = get id for kanji entry
+    #lib_name = get name of library
+    #lib_type = get id for dictionary type
+    #lib_id = INSERT INTO Libraries VALUES (null, lib_name, lib_type)
+    #foreach entry
+        #if kana morph does not exist
+            #kana_id = INSERT INTO Morphemes VALUES (null, entry.kana, 
+                    #kana_entry_id, null)
+        #entry_id = INSERT INTO Entries VALUES (null, lib_id, entry.number, kana_id)
+        #kanji_id_list = get the kanjis id (lazy)
+        #for each kanji_id in kanji_id_list
+            #INSERT INTO EntryHasKanji VALUES (entry_id, kanji_id)
+        #insert the meanings
+        
+
+        
+
 
 if __name__ == '__main__':
     main()
