@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import division
 import re
 import codecs
 from japanese_parser import *
 from data_structures import *
 from db_interface import *
+from kenkyusha5_dumper import *
+from kenkyusha5_dump_converter import *
 import sqlite3 as lite
 
 re_header_line = re.compile(r'(\w+?): ?(.*)$')
@@ -16,6 +19,44 @@ re_meaning_split = re.compile(r'^\t([^\t]*)\n')
 re_ue = re.compile(r'^\t\t[^\t]')
 re_ue_split = re.compile(r'^\t\t([^\t]*)\t([^\t]*)\n')
 
+class LibraryImporter(object):
+    """docstring for LibraryImporter"""
+    def __init__(self):
+        super(LibraryImporter, self).__init__()
+
+    def set_library(self, library_code):
+        """docstring for set_library"""
+        self.library_code = library_code
+        
+    def prepare_library(self):
+        """docstring for prepare"""
+        if self.library_code == 'WADAI5':
+            dumper = Kenkyusha5Dumper('kenkyusha')
+            dumper.dump('kenkyusha_dump')
+            dump_converter = Kenkyusha5DumpConverter('kenkyusha_dump')
+            dump_converter.convert('kenkyusha_converted')
+    
+    def import_progress(self):
+        """docstring for import_progress"""
+        progress = ProgressPoint(1, 2, 0, 1)
+        yield progress
+        self.prepare_library()
+        dbi = DatabaseInterface('sentence_library2.db')
+        dbi.reset_database()
+        importer = UELibraryImporter('out2')
+        parser = JapaneseParser()
+        lib_type = importer.type_
+        lib_id = dbi.get_or_create_library_id('Kenkyusha 5th', 1)
+        print lib_id
+        total_num_entries = num_entries('out2')
+        progress = ProgressPoint(2, 2, 0, total_num_entries)
+        for idx, entry in enumerate(importer.entries()):
+            #print entry
+            progress.point = idx
+            dbi.import_entry_recursive(entry, lib_id, parser)
+            #yield idx
+            yield progress
+        dbi.commit()
 
 class UELibraryImporter(object):
     """Imports usage example libraries"""
@@ -27,7 +68,9 @@ class UELibraryImporter(object):
         self.format_type = FORMAT_TABS
         self.process_headers()
         self.prev_line = self.fh.readline()
+        self.library_code = None
         print self.name, self.type_, self.format_type
+
 
     def process_headers(self):
         """docstring for process_headers"""
@@ -93,133 +136,75 @@ class UELibraryImporter(object):
 
 def import_library():
     """docstring for import_library"""
+    dbi = DatabaseInterface('sentence_library2.db')
+    dbi.reset_database()
     importer = UELibraryImporter('out2')
     parser = JapaneseParser()
     lib_type = importer.type_
-    con = lite.connect('sentence_library.db')
-    cur = con.cursor() 
-    try:
-        cur.execute("INSERT INTO Libraries VALUES(null,?,?)",
-                    ('Kenkyusha 5th', 1))
-        lib_id = cur.lastrowid
-        con.commit()
-    except lite.IntegrityError as e:
-        cur.execute("select id from Libraries as L where L.name = ?",
-                ['Kenkyusha 5th'])    
-        lib_id = cur.fetchone()[0]
+    lib_id = dbi.get_or_create_library_id('Kenkyusha 5th', 1)
     print lib_id
-    i = 0
-    for entry in importer.entries():
+    for idx, entry in enumerate(importer.entries()):
         print entry
-        try:
-            cur.execute("INSERT INTO Morphemes VALUES(null,?,?,?)",
-                        (entry.kana, 15, None))
-            kana_id = cur.lastrowid
-        except lite.IntegrityError as e:
-            cur.execute("select id from Morphemes as M where M.morpheme = ? and M.morphemeType = ?",
-                    (entry.kana, 15))
-            kana_id = cur.fetchone()[0]
-        cur.execute("INSERT INTO Entries VALUES(null,?,?,?)",
-                    (lib_id, entry.entry_number, kana_id))
-        entry_id = cur.lastrowid
-        #insert kanji
-        for kanji in entry.kanji:
-            if kanji == '':
-                continue
-            try:
-                cur.execute("INSERT INTO Morphemes VALUES(null,?,?,?)",
-                            (kanji, 14, None))
-                kanji_id = cur.lastrowid
-            except lite.IntegrityError as e:
-                cur.execute("select id from Morphemes as M where M.morpheme = ? and M.morphemeType = ?",
-                        (kanji, 14))
-                kanji_id = cur.fetchone()[0]
-            cur.execute("INSERT INTO EntryHasKanji VALUES(?,?)",
-                        (entry_id, kanji_id))
-        #insert meanings
-        for meaning in entry.meanings:
-            cur.execute("INSERT INTO Meanings VALUES(null,?,?)",
-                        (meaning.meaning, entry_id))
-            meaning_id = cur.lastrowid
-            #insert UEs
-            for ue in meaning.usage_examples:
-                cur.execute("INSERT INTO UsageExamples VALUES(null,?,?,?,?)",
-                            (ue.expression, ue.meaning, None, True))
-                ue_id = cur.lastrowid
-                cur.execute("INSERT INTO MeaningHasUEs VALUES(?,?)",
-                            (ue_id, meaning_id))
-                cur.execute("INSERT INTO UEPartOfLibrary VALUES(?,?)",
-                            (ue_id, lib_id))
-                components = ue.get_components(parser)
+        dbi.import_entry_recursive(entry, lib_id, parser)
+        print idx
+    dbi.commit()
 
-                #print listDictString(components)
-                for component in components:
-                    #print component['morpheme']
-                    #print component
-                    if component['base'] == '':
-                        continue
-                    try:
-                        cur.execute("INSERT INTO Morphemes VALUES(null,?,?,?)",
-                                    (component['base'], component['type'], None))
-                        morph_id = cur.lastrowid
-                    except lite.IntegrityError as e:
-                        cur.execute("select id from Morphemes as M where M.morpheme = ? and M.morphemeType = ?",
-                                (component['base'], component['type']))
-                        morph_id = cur.fetchone()[0]
-                    cur.execute("INSERT INTO UEConsistsOf VALUES(?,?,?,?)",
-                                (ue_id, morph_id, component['length'], component['position']))
+def num_entries(fname):
+    num_entries = 0
+    with open(fname) as fh:
+        for line in fh:
+            if re_entry.match(line):
+                num_entries += 1
+    return num_entries
 
-                    
 
-        con.commit()
-        #return
-        #if i == 100:
-            #return
-        print i
-        i += 1
-    con.close()
+#def import_progress():
+    #"""docstring for import_progress"""
+    #dbi = DatabaseInterface('sentence_library2.db')
+    #dbi.reset_database()
+    #importer = UELibraryImporter('out2')
+    #parser = JapaneseParser()
+    #lib_type = importer.type_
+    #lib_id = dbi.get_or_create_library_id('Kenkyusha 5th', 1)
+    #print lib_id
+    #total_num_entries = num_entries('out2')
+    #progress = ProgressPoint(1, 2, 0, total_num_entries)
+    #for idx, entry in enumerate(importer.entries()):
+        ##print entry
+        #progress.point = idx
+        #dbi.import_entry_recursive(entry, lib_id, parser)
+        ##yield idx
+        #yield progress
+    #dbi.commit()
+
+class ProgressPoint(object):
+    """docstring for ProgressPoint"""
+    def __init__(self, phase, total_phases, point, total_points):
+        super(ProgressPoint, self).__init__()
+        self.total_phases = total_phases
+        self.phase = phase
+        self.point = point
+        self.total_points = total_points
+
+    def percent(self):
+        return (self.point / self.total_points) * 100
+
+    def __str__(self):
+        """docstring for __str__"""
+        return "Phase {}/{}  {:3.2f}% {}".format(self.phase, 
+                                         self.total_phases, 
+                                         self.percent(),
+                                         self.point)
 
 def main():
-    import_library()
-    exit()
-    importer = UELibraryImporter('out2')
-    lib_type = importer.type_
-    #entry = True
-    #for entry in importer.entries():
-        #print entry
-    entry = importer.read_entry()
-    print entry
-    ue = entry.meanings[2].usage_examples[0]
-    parser = JapaneseParser()
-    print listDictString(ue.get_components(parser))
-    #importer.read_entry()
-    #if lib_type == DICTIONARY:
-        #while importer.not_end_of_file():
-            #entry = importer.read_entry()
-            #db_interface.import_entry(entry)
-    #db = DatabaseInterface()
-    #db.new_library()
-    #foreach entry in entries
-        #insert into new library
-
-    #kana_entry_type_id = get id for kana entry
-    #kanji_entry_type_id = get id for kanji entry
-    #lib_name = get name of library
-    #lib_type = get id for dictionary type
-    #lib_id = INSERT INTO Libraries VALUES (null, lib_name, lib_type)
-    #foreach entry
-        #if kana morph does not exist
-            #kana_id = INSERT INTO Morphemes VALUES (null, entry.kana, 
-                    #kana_entry_id, null)
-        #entry_id = INSERT INTO Entries VALUES (null, lib_id, entry.number, kana_id)
-        #kanji_id_list = get the kanjis id (lazy)
-        #for each kanji_id in kanji_id_list
-            #INSERT INTO EntryHasKanji VALUES (entry_id, kanji_id)
-        #insert the meanings
-        
-
-        
-
+    #import_library()
+    #for progress in import_progress():
+        #print progress
+    importer = LibraryImporter()
+    importer.set_library('WADAI5')
+    #importer.prepare_library()
+    for progress in importer.import_progress():
+        print progress
 
 if __name__ == '__main__':
     main()

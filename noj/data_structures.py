@@ -43,18 +43,6 @@ class DictionaryEntry(object):
         """docstring for num_meanings"""
         return len(self.meanings)
     
-    def get_id(self, db_interface):
-        """docstring for get_id"""
-        pass
-
-    def import_non_recursive(self, db_interface):
-        """docstring for import_single"""
-        pass
-
-    def import_recursive(self, db_interface):
-        """docstring for import_single"""
-        pass
-
     def __str__(self):
         meaning_str_list = list()
         for m in self.meanings:
@@ -66,6 +54,16 @@ class DictionaryEntry(object):
                                     self.entry_number, 
                                     kanji_str.encode('utf-8'),
                                     meaning_str)) 
+
+    def __repr__(self):
+        lines = list()
+        lines.append("e = DictionaryEntry({}, {}, {})".format(
+                     repr(self.kana), repr(self.kanji), 
+                     repr(self.entry_number)))
+        for meaning in self.meanings:
+            lines.append(repr(meaning))
+            lines.append("e.add_meaning(m)")
+        return '\n'.join(lines)
 
 
 class DictionaryMeaning(object):
@@ -89,6 +87,15 @@ class DictionaryMeaning(object):
                                 self.meaning.encode('utf-8'),
                                 ue_str))
 
+    def __repr__(self):
+        lines = list()
+        lines.append("m = DictionaryMeaning({}, {})".format(
+                     repr(self.meaning), repr(self.meaning_number)))
+        for ue in self.usage_examples:
+            lines.append(repr(ue))
+            lines.append('m.add_usage_example(ue)')
+        return '\n'.join(lines)
+
 
 class UsageExample(object):
     """docstring for UsageExample"""
@@ -108,6 +115,13 @@ class UsageExample(object):
     def __str__(self):
         return ("{}\n{}".format(self.expression.encode('utf-8'),
                                 self.meaning.encode('utf-8')))
+
+    def __repr__(self):
+        lines = list()
+        lines.append("ue = UsageExample({}, {}, {})".format(
+                     repr(self.expression), repr(self.meaning), 
+                     repr(self.type_)))
+        return '\n'.join(lines)
 
 if __name__ == '__main__':
     db_interface = DatabaseInterface('sentence_library.db')

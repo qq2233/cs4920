@@ -22,6 +22,69 @@ in_entry = False
 in_meaning = False
 #in_word_form = False
 
+class Kenkyusha5DumpConverter(object):
+    """docstring for Kenkyusha5DumpConverter"""
+    def __init__(self, dumpfile):
+        super(Kenkyusha5DumpConverter, self).__init__()
+        self.dumpfile = dumpfile
+
+    def convert(self, outfile):
+        """docstring for convert"""
+        fh_out = open(outfile,"w")
+        #fh_out.write(self.replace_gaiji_hex(utf8_content))
+
+        #formation, phrase
+        fh_in = codecs.open(self.dumpfile, 'r', encoding='utf-8')
+        print >>fh_out, "NAME: Kenkyusha's New Japanese-English Dictionary 5th"
+        print >>fh_out, "TYPE: DICTIONARY"
+        print >>fh_out, "FORMAT: TABS"
+        print >>fh_out, "KANJI-SEP: PIPE"
+        print >>fh_out, ''
+        for line in fh_in:
+            #line = line.decode('utf-8')
+            if line == '\n':
+                continue
+            if re_entry.search(line):
+                in_entry = True
+                in_meaning = False
+                in_word_form = False
+                has_multiple_meanings = True
+                e = split_entry(line)
+                print >>fh_out, entry_string(kana=e['kana'], 
+                        number=e['number'], kanji=e['kanji']).encode('utf-8')
+                #print "{}".format(line.encode('utf-8')),
+            elif in_entry == True:
+                nm = re_numbered_meaning.match(line)
+                if (nm and has_multiple_meanings == True):
+                    in_meaning = True
+                    in_word_form = False
+                    print >>fh_out, "\t{}".format(nm.group(1).encode('utf-8'))
+                elif in_meaning == False:
+                    has_multiple_meanings = False
+                    in_meaning = True
+                    in_word_form = False
+                    m = match_sentence(line)
+                    if m:
+                        print >>fh_out, "\t"
+                        print >>fh_out, "\t\t{}\t{}".format(
+                                m.group(1).encode('utf-8'), 
+                                m.group(2).encode('utf-8'))
+                    else:
+                        print >>fh_out, "\t{}".format(line.encode('utf-8')),
+                elif in_meaning == True:
+                    m = match_sentence(line)
+                    if m:
+                        print >>fh_out, "\t\t{}\t{}".format(
+                                m.group(1).encode('utf-8'), 
+                                m.group(2).encode('utf-8'))
+                    #else:
+                        #print "\t\t<P>{}".format(line),
+
+
+
+
+        fh_out.close()
+
 def split_entry(entry_line):
     m1 = re_entry_split1.match(entry_line)
     if m1:
@@ -79,50 +142,51 @@ def entry_string(kana, number, kanji):
         out.append(str(number))
     return '\t'.join(out)
 
-#formation, phrase
-f = codecs.open('wadai5.dump', 'r', encoding='utf-8')
-print "NAME: Kenkyusha's New Japanese-English Dictionary 5th"
-print "TYPE: DICTIONARY"
-print "FORMAT: TABS"
-print "KANJI-SEP: PIPE"
-print
-for line in f:
-    #line = line.decode('utf-8')
-    if line == '\n':
-        continue
-    if re_entry.search(line):
-        in_entry = True
-        in_meaning = False
-        in_word_form = False
-        has_multiple_meanings = True
-        e = split_entry(line)
-        print entry_string(kana=e['kana'], 
-                number=e['number'], kanji=e['kanji']).encode('utf-8')
-        #print "{}".format(line.encode('utf-8')),
-    elif in_entry == True:
-        nm = re_numbered_meaning.match(line)
-        if (nm and has_multiple_meanings == True):
-            in_meaning = True
-            in_word_form = False
-            print "\t{}".format(nm.group(1).encode('utf-8'))
-        elif in_meaning == False:
-            has_multiple_meanings = False
-            in_meaning = True
-            in_word_form = False
-            m = match_sentence(line)
-            if m:
-                print "\t"
-                print "\t\t{}\t{}".format(
-                        m.group(1).encode('utf-8'), 
-                        m.group(2).encode('utf-8'))
-            else:
-                print "\t{}".format(line.encode('utf-8')),
-        elif in_meaning == True:
-            m = match_sentence(line)
-            if m:
-                print "\t\t{}\t{}".format(
-                        m.group(1).encode('utf-8'), 
-                        m.group(2).encode('utf-8'))
-            #else:
-                #print "\t\t<P>{}".format(line),
 
+if __name__ == '__main__':
+    #formation, phrase
+    f = codecs.open('wadai5.dump', 'r', encoding='utf-8')
+    print "NAME: Kenkyusha's New Japanese-English Dictionary 5th"
+    print "TYPE: DICTIONARY"
+    print "FORMAT: TABS"
+    print "KANJI-SEP: PIPE"
+    print
+    for line in f:
+        #line = line.decode('utf-8')
+        if line == '\n':
+            continue
+        if re_entry.search(line):
+            in_entry = True
+            in_meaning = False
+            in_word_form = False
+            has_multiple_meanings = True
+            e = split_entry(line)
+            print entry_string(kana=e['kana'], 
+                    number=e['number'], kanji=e['kanji']).encode('utf-8')
+            #print "{}".format(line.encode('utf-8')),
+        elif in_entry == True:
+            nm = re_numbered_meaning.match(line)
+            if (nm and has_multiple_meanings == True):
+                in_meaning = True
+                in_word_form = False
+                print "\t{}".format(nm.group(1).encode('utf-8'))
+            elif in_meaning == False:
+                has_multiple_meanings = False
+                in_meaning = True
+                in_word_form = False
+                m = match_sentence(line)
+                if m:
+                    print "\t"
+                    print "\t\t{}\t{}".format(
+                            m.group(1).encode('utf-8'), 
+                            m.group(2).encode('utf-8'))
+                else:
+                    print "\t{}".format(line.encode('utf-8')),
+            elif in_meaning == True:
+                m = match_sentence(line)
+                if m:
+                    print "\t\t{}\t{}".format(
+                            m.group(1).encode('utf-8'), 
+                            m.group(2).encode('utf-8'))
+                #else:
+                    #print "\t\t<P>{}".format(line),

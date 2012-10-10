@@ -164,6 +164,7 @@ class MyTest(unittest.TestCase):
             wantComp = e['components']
             self.assertEqual(gotComp, wantComp, 
                 "E{}: Parse components mismatch\nGot:\n{}\n\nWant:\n{}".format(idx, japanese_parser.listDictString(gotComp), japanese_parser.listDictString(wantComp)))
+        # uncomment when anki_reading function is implemented
         #self.assertEqual(results.ankiReading(), expectedAnkiReading1, "parse anki readings mismatch")
 
 if __name__ == '__main__':

@@ -1,9 +1,10 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 # code adapted from:
 # http://mecab.googlecode.com/svn/trunk/mecab/doc/bindings.html
 # https://github.com/dae/ankiplugins/blob/master/japanese/reading.py
 
-from __future__ import print_function
 import MeCab
 import re
 from jcconv import *
@@ -23,7 +24,7 @@ FILLER = 11
 SYMBOL = 12
 OTHER = 13
 
-morphemeTypes = {
+MORPHEME_TYPES = {
     u'BOS/EOS':BOS_EOS,
     u'感動詞':INTERJECTION,
     u'副詞':ADVERB,
@@ -41,15 +42,24 @@ morphemeTypes = {
 }
 
 class JapaneseParser(object):
-    """A MeCab parser to parse japanese sentences into morphemes"""
+    """A MeCab parser to parse japanese sentences into morphemes."""
+
     def __init__(self):
         super(JapaneseParser, self).__init__()
         self._parser = None
         self.skipTypes = frozenset([BOS_EOS])
 
     def parse(self, expression):
-        """Parse a japanese expression into morphemes, returns 
-        parse results"""
+        """Parse a Japanese expression into morphemes. 
+        
+        Args:
+            expression: A Unicode string representing a Japanese
+                expression.
+
+        Returns:
+            An instance of JapaneseParseResults containing the 
+            expression parsed into morphemes.
+        """
         expression_utf8 = expression.encode('utf-8')
         node = self.parser.parseToNode(expression_utf8)
         results = JapaneseParseResults()
@@ -60,9 +70,9 @@ class JapaneseParser(object):
             for d in range(0,len(details)):
                 if details[d] == '*':
                     details[d] = ''
-            type = morphemeTypes[details[0]]
+            type = MORPHEME_TYPES[details[0]]
             if type not in self.skipTypes:
-                results.addMorpheme (
+                results.add_morpheme (
                     morpheme=unicode(node.surface, encoding='utf-8'),
                     base=details[-3],
                     reading=kata2hira(details[-2]),
@@ -76,22 +86,22 @@ class JapaneseParser(object):
 
     @property
     def parser(self):
-        """Get the parser lazily"""
+        """Get the Japanese parser by lazy instantiation."""
         if not self._parser:
             self._parser = MeCab.Tagger('mecabrc')
         return self._parser
 
 class JapaneseParseResults(object):
-    """Results from parsing using Japanese Parser"""
+    """Contains morphemes from parsing using JapaneseParser."""
     def __init__(self):
         super(JapaneseParseResults, self).__init__()
         self.morphemes = list()
         self.skipTypesComponents = frozenset([BOS_EOS, SYMBOL])
         self._components = None
 
-    def addMorpheme(self, morpheme, base=None, reading=None, 
-            length=None, position=None, type=None):
-        """add a morpheme to the parse results"""
+    def add_morpheme(self, morpheme, base=None, reading=None, 
+                     length=None, position=None, type=None):
+        """Add a morpheme to the parse results."""
         m = {
             'morpheme':morpheme,
             'base':base,
@@ -102,67 +112,23 @@ class JapaneseParseResults(object):
         }
         self.morphemes.append(m)
 
-    # Don't use this function yet, will modify when we get to using it
-    def ankiReading(self):
-        """return string compatible with anki for furigana reading
-        See: https://github.com/dae/ankiplugins
-                /blob/master/japanese/reading.py"""
-        out = []
-        for idx, m in enumerate(self.morphemes):
-            # hiragana, punctuation, not japanese, or lacking a reading
-            morpheme = m['morpheme']
-            reading = m['reading']
-            if morpheme == reading or not reading or reading == '':
-                out.append(morpheme)
-                continue
-            # katakana
-            # TODO:
-            # don't add readings of numbers
-            #if morpheme in u"一二三四五六七八九十０１２３４５６７８９":
-                #out.append(morpheme)
-                #continue
-
-            # strip matching hiragana characters at beginning and 
-            # end of morpheme. This code was adapted from the Anki
-            # Japanese support library
-            placeL = 0
-            placeR = 0
-            md = morpheme.decode('utf-8')
-            rd = reading.decode('utf-8')
-            for i in range(1,len(md)):
-                if md[-i] != rd[-i]:
-                    break
-                placeR = i
-            for i in range(0,len(md)-1):
-                if md[i] != rd[i]:
-                    break
-                placeL = i+1
-            if placeL == 0:
-                if placeR == 0:
-                    out.append((" %s[%s]" % (
-                        md, rd)).encode('utf-8'))
-                else:
-                    out.append((" %s[%s]%s" % (
-                        md[:-placeR], rd[:-placeR], 
-                        rd[-placeR:])).encode('utf-8'))
-            else:
-                if placeR == 0:
-                    out.append(("%s %s[%s]" % (
-                        rd[:placeL], md[placeL:], 
-                        rd[placeL:])).encode('utf-8'))
-                else:
-                    out.append(("%s %s[%s]%s" % (
-                        rd[:placeL], md[placeL:-placeR],
-                        rd[placeL:-placeR], 
-                        rd[-placeR:])).encode('utf-8'))
-        return ''.join(out).strip()
-
     @property
     def components(self):
-        """return dict of morphemes which were part of the 
-        original expression. Used for populating the database.
-        Ignores characters which are too common and punctuation
-        Uses lazy instantiation"""
+        """Return list of morpheme data for populating the database.
+
+        Ignores punctuation.
+        
+        Returns:
+            A list of morpheme data (dicts) corresponding to the 
+            breakup of a Japanese expression. For example:
+
+            [{'morpheme':u'今日', 'base':u'今日', 'reading': 
+                u'きょう', 'position': 0, 'length': 6, 
+                'type':NOUN}, 
+            {'morpheme':u'も', 'base':u'も', 'reading': 
+                u'も', 'position': 6, 'length': 3, 
+                'type':PARTICLE}]
+        """
         if self._components == None:
             self._components = list()
             for m in self.morphemes:
@@ -199,4 +165,3 @@ if __name__ == "__main__":
     #results = parser.parse(u'This is english')
     #print (results.components)
     print(listDictString(results.components))
-    #print("reading:{}".format(results.ankiReading()))

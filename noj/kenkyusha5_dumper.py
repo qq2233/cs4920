@@ -75,40 +75,23 @@ class Kenkyusha5Dumper(object):
 
     def dump(self, outfile):
         """Dump to file"""
-        #eb_seek_text(self.book, (135898, 982))
-        #eb_seek_text(self.book, (1, 0))
-        #eb_seek_text(self.book, (107887, 872))
-        #eb_seek_text(self.book, (108260, 1606))
-        #pos = eb_tell_text(self.book)
-        #print(pos)
-        #content = self.get_content()
-        #utf8_content = content.decode('euc-jp', errors='ignore').encode('utf-8',errors='ignore')
-        #print self.replace_gaiji_hex(utf8_content)
-
+        #(159979, 1882) is last position with useful info
+        #(159979, 1944) is first position with useless info
+        #(107887, 872) is the foreword
+        #(108260, 1606) is first entry
+        fh = open(outfile,"w")
         pos = (108260, 1606)
         eb_seek_text(self.book, pos)
         while pos <= (159979, 1882):
             content = self.get_content()
             utf8_content = content.decode('euc-jp', errors='ignore').encode('utf-8',errors='ignore')
-            print self.replace_gaiji_hex(utf8_content)
+            #print self.replace_gaiji_hex(utf8_content)
+            fh.write(self.replace_gaiji_hex(utf8_content))
             pos = eb_tell_text(self.book)
             #print(pos)
             eb_seek_text(self.book, (pos[0], pos[1]+2))
-
-        #while 1:
-            #pos = eb_tell_text(self.book)
-            #print(pos)
-            #eb_seek_text(self.book, (pos[0], pos[1]+2))
-            #content = self.get_content()
-            #utf8_content = content.decode('euc-jp', errors='ignore').encode('utf-8',errors='ignore')
-            #print self.replace_gaiji_hex(utf8_content)
-
-#(159979, 1882) is last position with useful info
-#(159979, 1944) is first position with useless info
-#(107887, 872) is the foreword
-#(108260, 1606) is first entry
+        fh.close()
         
-
 def main():
     dictdir = 'kenkyusha'
     outfile = 'kendump.txt'
