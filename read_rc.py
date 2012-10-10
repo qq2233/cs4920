@@ -1,4 +1,3 @@
-
 from sys import argv
 
 """ 
@@ -12,7 +11,7 @@ from sys import argv
 	2
 	3 .local_database
 	4 C:\local\database
-    5
+   	5
 	6 .i_plus_n 
 	7 int_value
 
